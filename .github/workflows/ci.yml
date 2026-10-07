@@ -69,6 +69,7 @@ jobs:
   sonar:
     name: SonarCloud quality gate
     runs-on: ubuntu-latest
+    if: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
         with:

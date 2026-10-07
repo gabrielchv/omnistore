@@ -4,13 +4,13 @@ resource "google_service_account" "deployer" {
 }
 
 resource "google_iam_workload_identity_pool" "github" {
-  workload_identity_pool_id = "github-actions-pool"
-  display_name              = "GitHub Actions"
+  workload_identity_pool_id = "github-actions-pool-omnistore"
+  display_name              = "GitHub Actions (omnistore)"
 }
 
 resource "google_iam_workload_identity_pool_provider" "github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.github.workload_identity_pool_id
-  workload_identity_pool_provider_id = "github-provider"
+  workload_identity_pool_provider_id = "github-provider-omnistore"
 
   attribute_mapping = {
     "google.subject"       = "assertion.sub"
