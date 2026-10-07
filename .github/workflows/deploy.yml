@@ -1,0 +1,108 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - 'services/**'
+      - 'strapi/**'
+      - '.github/workflows/deploy.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AR_BASE: ${{ vars.AR_BASE }}
+  REGION: ${{ vars.REGION }}
+
+jobs:
+  deploy:
+    name: Build and deploy to Cloud Run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_SA }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${{ vars.AR_HOST }}"
+
+      # ---------- strapi ----------
+      - name: Build strapi image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./strapi
+          push: true
+          tags: "${{ env.AR_BASE }}/strapi:${{ github.sha }}"
+
+      - name: Deploy strapi
+        run: |
+          gcloud run deploy strapi \
+            --image "${{ env.AR_BASE }}/strapi:${{ github.sha }}" \
+            --region "${{ env.REGION }}" \
+            --service-account "${{ vars.GCP_SA }}" \
+            --allow-unauthenticated \
+            --set-env-vars "HOST=0.0.0.0,PORT=1337,DATABASE_CLIENT=sqlite,DATABASE_FILENAME=.tmp/data.db,APP_KEYS=${{ secrets.STRAPI_APP_KEYS }},API_TOKEN_SALT=${{ secrets.STRAPI_API_TOKEN_SALT }},ADMIN_JWT_SECRET=${{ secrets.STRAPI_ADMIN_JWT_SECRET }},TRANSFER_TOKEN_SALT=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }},JWT_SECRET=${{ secrets.STRAPI_JWT_SECRET }},ENCRYPTION_KEY=${{ secrets.STRAPI_ENCRYPTION_KEY }}"
+          echo "STRAPI_URL=$(gcloud run services describe strapi --region "${{ env.REGION }}" --format='value(status.url)')" >> "$GITHUB_ENV"
+
+      # ---------- orders ----------
+      - name: Build orders image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/orders
+          push: true
+          tags: "${{ env.AR_BASE }}/orders:${{ github.sha }}"
+
+      - name: Deploy orders
+        run: |
+          gcloud run deploy orders \
+            --image "${{ env.AR_BASE }}/orders:${{ github.sha }}" \
+            --region "${{ env.REGION }}" \
+            --service-account "${{ vars.GCP_SA }}" \
+            --allow-unauthenticated \
+            --set-env-vars "PORT=8080,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }},STRAPI_URL=$STRAPI_URL"
+
+      # ---------- payments ----------
+      - name: Build payments image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/payments
+          push: true
+          tags: "${{ env.AR_BASE }}/payments:${{ github.sha }}"
+
+      - name: Deploy payments
+        run: |
+          gcloud run deploy payments \
+            --image "${{ env.AR_BASE }}/payments:${{ github.sha }}" \
+            --region "${{ env.REGION }}" \
+            --service-account "${{ vars.GCP_SA }}" \
+            --allow-unauthenticated \
+            --min-instances=1 --max-instances=1 \
+            --set-env-vars "PORT=8081,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"
+
+      # ---------- notifications ----------
+      - name: Build notifications image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./services/notifications
+          push: true
+          tags: "${{ env.AR_BASE }}/notifications:${{ github.sha }}"
+
+      - name: Deploy notifications
+        run: |
+          gcloud run deploy notifications \
+            --image "${{ env.AR_BASE }}/notifications:${{ github.sha }}" \
+            --region "${{ env.REGION }}" \
+            --service-account "${{ vars.GCP_SA }}" \
+            --allow-unauthenticated \
+            --min-instances=1 --max-instances=1 \
+            --set-env-vars "PORT=8082,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"

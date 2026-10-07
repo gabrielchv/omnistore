@@ -1,0 +1,25 @@
+node_modules/
+dist/
+build/
+.tmp/
+coverage/
+*.log
+.DS_Store
+
+# Strapi local state
+strapi/.tmp/
+strapi/.cache/
+strapi/.strapi/
+strapi/dist/
+strapi/build/
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/terraform.tfvars
+
+# Local env files with secrets
+.env
+.env.local
+.env.*.local

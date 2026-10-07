@@ -1,0 +1,83 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  strapi:
+    build: ./strapi
+    ports:
+      - "1337:1337"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "1337"
+      DATABASE_CLIENT: sqlite
+      DATABASE_FILENAME: .tmp/data.db
+      APP_KEYS: "devAppKey1,devAppKey2,devAppKey3,devAppKey4"
+      API_TOKEN_SALT: devApiTokenSalt
+      ADMIN_JWT_SECRET: devAdminJwtSecret
+      TRANSFER_TOKEN_SALT: devTransferTokenSalt
+      JWT_SECRET: devJwtSecret
+      ENCRYPTION_KEY: devEncryptionKey
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:1337/api/products"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  orders:
+    build: ./services/orders
+    ports:
+      - "8083:8080"
+    environment:
+      PORT: "8080"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      STRAPI_URL: http://strapi:1337
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      strapi:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  payments:
+    build: ./services/payments
+    ports:
+      - "8081:8081"
+    environment:
+      PORT: "8081"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  notifications:
+    build: ./services/notifications
+    ports:
+      - "8082:8082"
+    environment:
+      PORT: "8082"
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
