@@ -51,7 +51,7 @@ jobs:
             --region "${{ env.REGION }}" \
             --service-account "${{ vars.GCP_SA }}" \
             --allow-unauthenticated \
-            --set-env-vars "HOST=0.0.0.0,PORT=1337,DATABASE_CLIENT=sqlite,DATABASE_FILENAME=.tmp/data.db,APP_KEYS=${{ secrets.STRAPI_APP_KEYS }},API_TOKEN_SALT=${{ secrets.STRAPI_API_TOKEN_SALT }},ADMIN_JWT_SECRET=${{ secrets.STRAPI_ADMIN_JWT_SECRET }},TRANSFER_TOKEN_SALT=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }},JWT_SECRET=${{ secrets.STRAPI_JWT_SECRET }},ENCRYPTION_KEY=${{ secrets.STRAPI_ENCRYPTION_KEY }}"
+            --set-env-vars "DATABASE_CLIENT=sqlite,DATABASE_FILENAME=.tmp/data.db,APP_KEYS=${{ secrets.STRAPI_APP_KEYS }},API_TOKEN_SALT=${{ secrets.STRAPI_API_TOKEN_SALT }},ADMIN_JWT_SECRET=${{ secrets.STRAPI_ADMIN_JWT_SECRET }},TRANSFER_TOKEN_SALT=${{ secrets.STRAPI_TRANSFER_TOKEN_SALT }},JWT_SECRET=${{ secrets.STRAPI_JWT_SECRET }},ENCRYPTION_KEY=${{ secrets.STRAPI_ENCRYPTION_KEY }}"
           echo "STRAPI_URL=$(gcloud run services describe strapi --region "${{ env.REGION }}" --format='value(status.url)')" >> "$GITHUB_ENV"
 
       # ---------- orders ----------
@@ -69,7 +69,7 @@ jobs:
             --region "${{ env.REGION }}" \
             --service-account "${{ vars.GCP_SA }}" \
             --allow-unauthenticated \
-            --set-env-vars "PORT=8080,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }},STRAPI_URL=$STRAPI_URL"
+            --set-env-vars "RABBITMQ_URL=${{ secrets.RABBITMQ_URL }},STRAPI_URL=$STRAPI_URL"
 
       # ---------- payments ----------
       - name: Build payments image
@@ -87,7 +87,7 @@ jobs:
             --service-account "${{ vars.GCP_SA }}" \
             --allow-unauthenticated \
             --min-instances=1 --max-instances=1 \
-            --set-env-vars "PORT=8081,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"
+            --set-env-vars "RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"
 
       # ---------- notifications ----------
       - name: Build notifications image
@@ -105,4 +105,4 @@ jobs:
             --service-account "${{ vars.GCP_SA }}" \
             --allow-unauthenticated \
             --min-instances=1 --max-instances=1 \
-            --set-env-vars "PORT=8082,RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"
+            --set-env-vars "RABBITMQ_URL=${{ secrets.RABBITMQ_URL }}"
