@@ -69,13 +69,21 @@ jobs:
   sonar:
     name: SonarCloud quality gate
     runs-on: ubuntu-latest
-    if: ${{ secrets.SONAR_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
+      - name: Check for SonarCloud token
+        id: sonar-check
+        shell: bash
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then echo "enabled=true" >> "$GITHUB_OUTPUT"; else echo "enabled=false" >> "$GITHUB_OUTPUT"; fi
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
       - name: SonarCloud scan
-        uses: SonarSource/sonarqube-scan-action@v5
+        if: steps.sonar-check.outputs.enabled == 'true'
+        uses: SonarSource/sonarqube-scan-action@v6
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
